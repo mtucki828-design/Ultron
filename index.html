@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ULTRON</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#050608;color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{max-width:700px;margin:auto;min-height:100vh;display:flex;flex-direction:column}
+header{padding:28px 20px 20px;border-bottom:1px solid #20242b}
+.logo{font-size:28px;font-weight:800;letter-spacing:6px}
+.status{margin-top:6px;color:#7cff8a;font-size:13px}
+main{flex:1;padding:20px}
+.welcome{background:#0d1015;border:1px solid #252a32;border-radius:20px;padding:22px;margin-bottom:18px}
+.welcome h1{margin:0 0 8px;font-size:24px}
+.welcome p{margin:0;color:#9299a5}
+.chat{min-height:300px;max-height:55vh;overflow-y:auto;background:#090b0f;border:1px solid #252a32;border-radius:20px;padding:16px;margin-bottom:15px}
+.message{margin-bottom:14px;line-height:1.5;overflow-wrap:anywhere}
+.ultron{color:#8ab4ff}
+.user{color:#fff}
+.input-area{display:flex;gap:8px}
+input{flex:1;min-width:0;padding:15px;border-radius:14px;border:1px solid #292f38;background:#0d1015;color:#fff;font-size:16px}
+button{border:0;border-radius:14px;padding:0 18px;background:#fff;color:#050608;font-weight:700;cursor:pointer}
+.input-area button{min-height:50px}
+.modules{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}
+.module{padding:16px 8px;text-align:center;background:#0d1015;border:1px solid #252a32;border-radius:15px;color:#fff}
+.module small{display:block;color:#777f8c;margin-top:5px}
+footer{padding:15px 20px 25px;color:#5f6672;text-align:center;font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+<div class="logo">ULTRON</div>
+<div class="status">● SYSTEM ONLINE</div>
+</header>
+
+<main>
+
+<div class="welcome">
+<h1>Witaj.</h1>
+<p>Jestem ULTRON. To moja pierwsza wersja.</p>
+</div>
+
+<div class="chat" id="chat">
+<div class="message ultron">
+<strong>ULTRON:</strong><br>
+System uruchomiony. Czekam na polecenie.
+</div>
+</div>
+
+<div class="input-area">
+<input id="message" placeholder="Napisz do Ultrona..." autocomplete="off">
+<button id="sendButton">WYŚLIJ</button>
+</div>
+
+<div class="modules">
+
+<button class="module" data-module="Pamięć">
+🧠<br>Pamięć
+<small id="memoryCount">0 zapisów</small>
+</button>
+
+<button class="module" data-module="Projekty">
+📁<br>Projekty
+<small>0 projektów</small>
+</button>
+
+<button class="module" data-module="Zadania">
+📋<br>Zadania
+<small>0 zadań</small>
+</button>
+
+</div>
+
+</main>
+
+<footer>ULTRON CORE V0.4</footer>
+
+</div>
+
+<script>
+
+const MEMORY_KEY="ultron_memory_v04";
+
+const $=id=>document.getElementById(id);
+
+function esc(value){
+const d=document.createElement("div");
+d.textContent=String(value);
+return d.innerHTML;
+}
+
+function addMessage(type,text){
+const chat=$("chat");
+const m=document.createElement("div");
+
+m.className="message "+type;
+m.innerHTML=text;
+
+chat.appendChild(m);
+chat.scrollTop=chat.scrollHeight;
+}
+
+function getMemory(){
+try{
+const x=JSON.parse(localStorage.getItem(MEMORY_KEY));
+return Array.isArray(x)?x:[];
+}catch(e){
+return [];
+}
+}
+
+function saveMemory(m){
+localStorage.setItem(MEMORY_KEY,JSON.stringify(m));
+updateMemoryCount();
+}
+
+function updateMemoryCount(){
+
+const n=getMemory().length;
+
+$("memoryCount").textContent=
+n===1 ? "1 zapis" : n+" zapisów";
+
+}
+
+function remember(text){
+
+const memory=getMemory();
+
+memory.push({
+text:text,
+date:new Date().toLocaleString("pl-PL")
+});
+
+saveMemory(memory);
+
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>Zapamiętałem: "+esc(text)
+);
+
+}
+
+function showMemory(){
+
+const memory=getMemory();
+
+if(!memory.length){
+
+addMessage(
+"ultron",
+"<strong>🧠 PAMIĘĆ ULTRONA</strong><br><br>Moja pamięć jest jeszcze pusta."
+);
+
+return;
+}
+
+let html="<strong>🧠 PAMIĘĆ ULTRONA</strong><br><br>";
+
+memory.forEach((x,i)=>{
+
+html+=
+"<b>"+(i+1)+".</b> "+
+esc(x.text)+
+"<br><small>"+
+esc(x.date)+
+"</small><br><br>";
+
+});
+
+addMessage("ultron",html);
+
+}
+
+function cleanMemoryText(text){
+
+return text
+.replace(/^zapamiętaj\s*[:,-]?\s*/i,"")
+.replace(/^zapisz\s*[:,-]?\s*/i,"")
+.replace(/^pamiętaj\s*[:,-]?\s*/i,"")
+.replace(/^to jest ważne\s*[:,-]?\s*/i,"")
+.trim();
+
+}
+
+function deleteMemory(text){
+
+const match=text.match(
+/usuń zapis(?: z godziny| z)?\s+(\d{1,2}:\d{2}(?::\d{2})?)/i
+);
+
+if(!match)return false;
+
+const wanted=match[1];
+
+const old=getMemory();
+
+const filtered=old.filter(x=>{
+
+const m=x.date.match(/(\d{1,2}:\d{2}:\d{2})/);
+
+if(!m)return true;
+
+return wanted.length===5
+?m[1].slice(0,5)!==wanted
+:m[1]!==wanted;
+
+});
+
+if(filtered.length===old.length){
+
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>Nie znalazłem zapisu z godziny "+esc(wanted)+"."
+);
+
+return true;
+}
+
+saveMemory(filtered);
+
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>Usunąłem zapis z godziny "+esc(wanted)+"."
+);
+
+return true;
+
+}
+
+function processCommand(text){
+
+const lower=text.toLowerCase().trim();
+
+if(lower.startsWith("usuń zapis"))
+return deleteMemory(text);
+
+const trigger=
+/^(zapamiętaj|zapisz|pamiętaj|to jest ważne)\b/i;
+
+if(trigger.test(text)){
+
+const memoryText=cleanMemoryText(text);
+
+if(!memoryText){
+
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>Co mam zapamiętać?"
+);
+
+return true;
+}
+
+remember(memoryText);
+
+return true;
+
+}
+
+return false;
+
+}
+
+function normalResponse(text){
+
+const lower=text.toLowerCase();
+
+if(
+lower.includes("cześć")||
+lower.includes("hej")
+)
+return "Witaj. ULTRON jest online. Co dzisiaj budujemy?";
+
+if(lower.includes("kim jesteś"))
+return "Jestem ULTRON — Twój przyszły osobisty system AI.";
+
+return "Otrzymałem polecenie. Mój rdzeń będziemy teraz stopniowo rozbudowywać.";
+
+}
+
+function sendMessage(){
+
+const input=$("message");
+
+const text=input.value.trim();
+
+if(!text)return;
+
+addMessage(
+"user",
+"<strong>TY:</strong><br>"+esc(text)
+);
+
+input.value="";
+
+if(processCommand(text))
+return;
+
+setTimeout(()=>{
+
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>"+
+normalResponse(text)
+);
+
+},300);
+
+}
+
+$("sendButton").addEventListener(
+"click",
+sendMessage
+);
+
+$("message").addEventListener(
+"keydown",
+e=>{
+if(e.key==="Enter")
+sendMessage();
+}
+);
+
+document
+.querySelectorAll(".module")
+.forEach(btn=>{
+
+btn.addEventListener("click",()=>{
+
+const mod=btn.dataset.module;
+
+if(mod==="Pamięć")
+showMemory();
+
+else
+addMessage(
+"ultron",
+"<strong>ULTRON:</strong><br>"+
+"Moduł "+esc(mod)+
+" zostanie podłączony w kolejnej wersji."
+);
+
+});
+
+});
+
+updateMemoryCount();
+
+</script>
+
+</body>
+</html>
